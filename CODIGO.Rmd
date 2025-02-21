@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-02-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+```{r}
+# Instalar y cargar las librerías necesarias
+install.packages("quantmod")
+install.packages("PerformanceAnalytics")
+install.packages("tseries")
+install.packages("PortfolioAnalytics")
+
+library(quantmod)
+library(PerformanceAnalytics)
+library(tseries)
+library(PortfolioAnalytics)
+
+# Obtener los datos históricos de los activos
+getSymbols("NAFTRACISHRS.MX", src = "yahoo", from = "2020-01-01", to = Sys.Date())
+getSymbols("SPY", src = "yahoo", from = "2020-01-01", to = Sys.Date())
+
+# Simulando el rendimiento de los CETES a 28 días como una tasa fija
+CETES_return <- rep(0.10 / 252, length(NAFTRACISHRS.MX))  # Aproximación diaria
+
+# Extraer los precios ajustados para NAFTRACISHRS y SPY
+NAFTRACISHRS_prices <- Cl(NAFTRACISHRS.MX)
+SPY_prices <- Cl(SPY)
+
+# Calcular los rendimientos diarios de los activos
+NAFTRACISHRS_returns <- dailyReturn(NAFTRACISHRS_prices)
+SPY_returns <- dailyReturn(SPY_prices)
+
+# Alinear las series de tiempo. Usamos 'merge.xts' para asegurarnos de que las fechas coincidan.
+# Primero fusionamos los datos de NAFTRACISHRS y SPY
+aligned_returns <- merge(NAFTRACISHRS_returns, SPY_returns, all = FALSE)
+
+# Luego fusionamos CETES con los datos alineados previamente
+aligned_returns <- merge(aligned_returns, CETES_return, all = FALSE)
+
+# Verificamos las primeras filas para confirmar la alineación
+head(aligned_returns)
+
+# Ahora calculamos la media de los rendimientos y la matriz de covarianzas
+mean_returns <- colMeans(aligned_returns, na.rm = TRUE)
+cov_matrix <- cov(aligned_returns, use = "complete.obs")
+
+# Definir el grado de aversión al riesgo
+risk_aversion <- 4
+
+# Crear el objeto de portafolio y calcular la optimización
+portfolio <- portfolio.optimization(mean_returns, cov_matrix, risk_aversion)
+
+# Ver los resultados
+portfolio$weights  # Pesos óptimos de cada activo
+portfolio$objective_value  # Valor de la función objetivo
+
+# Si deseas graficar la frontera eficiente:
+efficient_frontier <- create.efficient.frontier(mean_returns, cov_matrix, risk_aversion)
+plot(efficient_frontier)
+
+```
+
